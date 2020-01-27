@@ -4,6 +4,10 @@
 #define PLIPS_ATOM 2
 #define PLIPS_INT 3
 #define PLIPS_FLOAT 4
+#define PLIPS_FALSE 5
+#define PLIPS_TRUE 6
+#define PLIPS_NIL 7
+#define PLIPS_STRING 8
 
 typedef struct _plips_reader_t plips_reader_t;
 typedef struct _plips_type_t plips_type_t;
