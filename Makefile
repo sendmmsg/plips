@@ -1,5 +1,5 @@
 GCC=gcc
-GCCOPTS=-Wall -W -O3
+GCCOPTS= -W -O3 -DGNU_SOURCE
 CLANG=/opt/wasi-sdk/bin/clang
 CLANGOPTS= --target=wasm32-unknown-wasi -Wl,--export-all --sysroot /opt/wasi-sdk/share/wasi-sysroot/  -O3 -s
 
