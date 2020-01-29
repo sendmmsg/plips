@@ -11,7 +11,7 @@ const char *pcreErrorStr;
 int pcreErrorOffset;
 const char *psubStrMatchStr;
 int _plips_reader_init = 0;
-
+void plips_reader_print(plips_reader_t *reader);
 struct _plips_reader_t
 {
     zlistx_t *tokens;
@@ -19,7 +19,7 @@ struct _plips_reader_t
     int pos;
 };
 
-static void reader_init() {
+static void plips_reader_init() {
     _plips_reader_init = 1;
     char *plRe = "[\\s ,]*(~@|[\\[\\]{}()'`~@]|\"(?:[\\\\].|[^\\\\\"])*\"?|;.*|[^\\s "
                  "\\[\\]{}()'\"`~@,;]*)";
@@ -35,7 +35,7 @@ static void reader_init() {
     }
 }
 
-void reader_destroy(plips_reader_t *self) {
+void plips_reader_destroy(plips_reader_t *self) {
     zlistx_destroy(&(self->tokens));
     free(self);
     self = NULL;
@@ -47,9 +47,9 @@ void token_destructor(void **string_p) {
     *string_p = NULL;
 }
 
-plips_reader_t *reader_new(char *input) {
+plips_reader_t *plips_reader_new(char *input) {
     if (_plips_reader_init == 0)
-        reader_init();
+        plips_reader_init();
 
     plips_reader_t *self = malloc(sizeof(plips_reader_t));
     self->tokens = zlistx_new();
@@ -86,8 +86,8 @@ plips_reader_t *reader_new(char *input) {
                     break;
             } /* end switch */
             fprintf(stderr, "parse error at pos: %d\nparsed: ", pos);
-            reader_print(self);
-            reader_destroy(self);
+            plips_reader_print(self);
+            plips_reader_destroy(self);
             return NULL;
         } else {
             // At this point, rc contains the number of substring matches found...
@@ -108,7 +108,7 @@ plips_reader_t *reader_new(char *input) {
     return self;
 }
 
-void reader_print(plips_reader_t *reader) {
+void plips_reader_print(plips_reader_t *reader) {
     size_t size;
     char *ptr;
     FILE *ss;
@@ -132,7 +132,7 @@ void reader_print(plips_reader_t *reader) {
 }
 
 
-char *reader_next(plips_reader_t *reader) {
+char *plips_reader_next(plips_reader_t *reader) {
     char *item;
     if (reader->pos == 0) {
         item = zlistx_first(reader->tokens);
@@ -144,7 +144,7 @@ char *reader_next(plips_reader_t *reader) {
     return item;
 }
 
-char *reader_peek(plips_reader_t *reader) {
+char *plips_reader_peek(plips_reader_t *reader) {
     char *item;
     if (reader->pos == 0) {
         item = zlistx_first(reader->tokens);
@@ -155,25 +155,25 @@ char *reader_peek(plips_reader_t *reader) {
     return item;
 }
 
-plips_val *reader_form(plips_reader_t *r);
+plips_val *plips_reader_form(plips_reader_t *r);
 
 
-plips_val *read_list(plips_reader_t *r) {
+plips_val *plips_reader_list(plips_reader_t *r) {
     //    printf("read_list called\n");
     plips_val *newlist = plips_val_list_new();
-    char *tok = reader_next(r);
+    char *tok = plips_reader_next(r);
     //    printf("Eating left par %s\n",tok);
     do {
         //        printf("read_list-%d\n", j++);
-        plips_val_list_append(newlist, reader_form(r));
-        tok = reader_peek(r);
+        plips_val_list_append(newlist, plips_reader_form(r));
+        tok = plips_reader_peek(r);
         //        printf("read_list next \"%s\"", tok);
     } while (tok != NULL && tok[0] != ')');
 
     if (tok == NULL) {
         printf("SYNTAX ERROR: unbalanced parathesis\n");
     } else if (tok[0] == ')') {
-        //        printf("Eating right par %s\n", reader_next(r));
+        plips_reader_next(r);
     }
     return newlist;
 }
@@ -276,11 +276,11 @@ int convert_to_string(char *str, char **dst) {
     return 1;
 }
 
-plips_val *read_atom(plips_reader_t *r) {
+plips_val *plips_read_atom(plips_reader_t *r) {
     //    printf("read_atom called\n");
     plips_val *atom = malloc(sizeof(plips_val));
 
-    char *item = reader_next(r);
+    char *item = plips_reader_next(r);
     if (strlen(item) == 5 && strcmp("false", item) == 0) {
         atom->type = PLIPS_FALSE;
         return atom;
@@ -310,27 +310,27 @@ plips_val *read_atom(plips_reader_t *r) {
     return atom;
 }
 
-plips_val *reader_form(plips_reader_t *r) {
+plips_val *plips_reader_form(plips_reader_t *r) {
     char *tok;
     do {
-        tok = reader_peek(r);
+        tok = plips_reader_peek(r);
     } while (tok != NULL && tok[0] == ';');
 
     if (tok == NULL) {
         printf("out of tokens\n");
         return NULL;
     } else if (tok[0] == '(') {
-        return read_list(r);
+        return plips_reader_list(r);
     } else {
-        return read_atom(r);
+        return plips_read_atom(r);
     }
 }
 plips_val *reader_str(char *command, int verbose) {
-    plips_reader_t *r = reader_new(command);
-    // reader_print(r);
-    plips_val *t = reader_form(r);
+    plips_reader_t *r = plips_reader_new(command);
+    //    plips_reader_print(r);
+    plips_val *t = plips_reader_form(r);
     // type_print(t, verbose);
     //    printf("\n");
-    reader_destroy(r);
+    plips_reader_destroy(r);
     return t;
 }

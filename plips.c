@@ -39,7 +39,7 @@ plips_val *APPLY(plips_val *ast) {
 
     for (int i = 0; i < num_args; i++) {
         a[i] = plips_val_list_next(ast);
-        printf("APPLY: a[%d] = %s\n", i, plips_val_tostr(a[i], 1));
+        //        printf("APPLY: a[%d] = %s\n", i, plips_val_tostr(a[i], 1));
     }
     switch (num_args) {
         case 0:
@@ -153,9 +153,9 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
 }
 
 plips_val *EVAL(plips_val *ast, plips_env *env) {
-    char *ast_str = plips_val_tostr(ast, 1);
-    printf("EVAL %s\n", ast_str);
-    free(ast_str);
+    //    char *ast_str = plips_val_tostr(ast, 1);
+    //    printf("EVAL %s\n", ast_str);
+    //    free(ast_str);
     if (!ast || plips_error)
         return NULL;
     if (ast->type != PLIPS_LIST)
@@ -178,9 +178,9 @@ char *PRINT(plips_val *ast) {
 }
 
 plips_val *READ(char *command, int verbose) {
-    printf("READ: %s\n", command);
+    //    printf("READ: %s\n", command);
     plips_val *ast = reader_str(command, verbose);
-    plips_val_print(ast, 1);
+    //    plips_val_print(ast, 1);
     return ast;
 }
 
@@ -195,13 +195,6 @@ plips_val *RE(plips_env *env, char *command, int verbose) {
         // TODO: free *ast here
     }
     return exp;
-}
-void completion(const char *buf, linenoiseCompletions *lc) {
-    if (buf[0] == '(') {
-        linenoiseAddCompletion(lc, "(define symbol form)");
-        linenoiseAddCompletion(lc, "(define symbol '(1 2))");
-        linenoiseAddCompletion(lc, "hello こんにちは 👨‍💻");
-    }
 }
 
 /* TODO: make a generic function here, getting rid of all the duplication */
@@ -339,6 +332,33 @@ void setup_repl_env() {
     f = plips_val_function_new((void *(*) (void *) ) _plips_div, 2);
     zhashx_insert(repl_env->table, "/", f);
 #pragma GCC diagnostic pop
+}
+
+#define streq(s1,s2)    (!strcmp ((s1), (s2)))
+void completion(const char *buf, linenoiseCompletions *lc) {
+    char *lparen = strrchr(buf, '(');
+    printf("lparen = %s\n", lparen);
+    if (lparen == buf || lparen == NULL){
+        if (streq(buf, "(") ){
+            linenoiseAddCompletion(lc, "(+ a b)");
+            linenoiseAddCompletion(lc, "(- a b)");
+            linenoiseAddCompletion(lc, "(* a b)");
+            linenoiseAddCompletion(lc, "(/ a b)");
+        }
+    } else if(lparen) {
+        if(streq(buf, "(+")){
+            linenoiseAddCompletion(lc, "(+ a b)");
+        }
+        if(streq(buf, "(-")){
+            linenoiseAddCompletion(lc, "(- a b)");
+        }
+        if(streq(buf, "(*")){
+            linenoiseAddCompletion(lc, "(* a b)");
+        }
+        if(streq(buf, "(/")){
+            linenoiseAddCompletion(lc, "(/ a b)");
+        }
+    }
 }
 
 char *hints(const char *buf, int *color, int *bold) {
