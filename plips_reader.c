@@ -133,6 +133,7 @@ void reader_print(plips_reader_t *reader) {
   free(ptr);
 }
 
+
 char *reader_next(plips_reader_t *reader) {
   char *item;
   if (reader->pos == 0) {
@@ -161,12 +162,12 @@ plips_val *reader_form(plips_reader_t *r);
 
 plips_val *read_list(plips_reader_t *r) {
   //    printf("read_list called\n");
-  plips_val *newlist = plips_list_new();
+  plips_val *newlist = plips_val_list_new();
   char *tok = reader_next(r);
   //    printf("Eating left par %s\n",tok);
   do {
     //        printf("read_list-%d\n", j++);
-    zlistx_add_end(newlist->val.list, reader_form(r));
+    plips_val_list_append(newlist, reader_form(r));
     tok = reader_peek(r);
     //        printf("read_list next \"%s\"", tok);
   } while (tok != NULL && tok[0] != ')');
@@ -306,7 +307,7 @@ plips_val *read_atom(plips_reader_t *r) {
   }
 
   // doesnt match anything else,  make it an atom
-  atom->type = PLIPS_ATOM;
+  atom->type = PLIPS_SYMBOL;
   atom->val.str = strdup(item);
   return atom;
 }
@@ -325,70 +326,6 @@ plips_val *reader_form(plips_reader_t *r) {
   } else {
     return read_atom(r);
   }
-}
-char *type_print(plips_val *pt, int verbose) {
-  size_t size;
-  char *ptr;
-  FILE *ss;
-  ss = open_memstream(&ptr, &size);
-  if (ss == NULL) {
-    perror("open_memstream: ");
-    exit(EXIT_FAILURE);
-  }
-
-  if (pt->type == PLIPS_LIST) {
-    if (verbose)
-      fprintf(ss, "L-%ld: (", zlistx_size(pt->val.list));
-    else
-      fprintf(ss, "(");
-
-    plips_val *i = zlistx_first(pt->val.list);
-    while (i) {
-      type_print(i, verbose);
-      i = zlistx_next(pt->val.list);
-    }
-    fprintf(ss, ") ");
-  } else if (pt->type == PLIPS_ATOM) {
-    if (verbose)
-      fprintf(ss, "A:%s ", pt->val.str);
-    else
-      fprintf(ss, "%s ", pt->val.str);
-  } else if (pt->type == PLIPS_INT) {
-    if (verbose)
-      fprintf(ss, "I:%ld ", pt->val.i64);
-    else
-      fprintf(ss, "%ld ", pt->val.i64);
-  } else if (pt->type == PLIPS_FLOAT) {
-    if (verbose)
-      fprintf(ss, "F:%f ", pt->val.f64);
-    else
-      fprintf(ss, "%f ", pt->val.f64);
-  } else if (pt->type == PLIPS_FALSE) {
-    if (verbose)
-      fprintf(ss, "A:false ");
-    else
-      fprintf(ss, "false ");
-  } else if (pt->type == PLIPS_TRUE) {
-    if (verbose)
-      fprintf(ss, "A:true ");
-    else
-      fprintf(ss, "true ");
-  } else if (pt->type == PLIPS_NIL) {
-    if (verbose)
-      fprintf(ss, "A:nil ");
-    else
-      fprintf(ss, "nil ");
-  } else if (pt->type == PLIPS_STRING) {
-    if (verbose)
-      fprintf(ss, "S:%s ", pt->val.str);
-    else
-      fprintf(ss, "%s ", pt->val.str);
-  } else {
-    fprintf(ss, "unknown pt type %d", pt->type);
-  }
-
-  fclose(ss);
-  return ptr;
 }
 plips_val *reader_str(char *command, int verbose) {
   plips_reader_t *r = reader_new(command);
