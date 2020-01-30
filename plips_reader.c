@@ -1,7 +1,7 @@
-#include "plips_reader.h"
 #include <czmq.h>
 #include <errno.h>
 #include <pcre.h>
+#include "plips.h"
 
 pcre *reCompiled;
 pcre_extra *pcreExtra;
@@ -130,7 +130,6 @@ void plips_reader_print(plips_reader_t *reader) {
     printf("%s", ptr);
     free(ptr);
 }
-
 
 char *plips_reader_next(plips_reader_t *reader) {
     char *item;
@@ -278,36 +277,29 @@ int convert_to_string(char *str, char **dst) {
 
 plips_val *plips_read_atom(plips_reader_t *r) {
     //    printf("read_atom called\n");
-    plips_val *atom = malloc(sizeof(plips_val));
-
+    int64_t i64;
+    double f64;
+    char *string;
     char *item = plips_reader_next(r);
     if (strlen(item) == 5 && strcmp("false", item) == 0) {
-        atom->type = PLIPS_FALSE;
-        return atom;
+        return &plips_false;
     }
     if (strlen(item) == 4 && strcmp("true", item) == 0) {
-        atom->type = PLIPS_TRUE;
-        return atom;
+        return &plips_true;
     }
     if (strlen(item) == 3 && strcmp("nil", item) == 0) {
-        atom->type = PLIPS_NIL;
-        return atom;
+        return &plips_nil;
     }
-    if (convert_to_integer(item, &atom->val.i64)) {
-        atom->type = PLIPS_INT;
-        return atom;
-    } else if (convert_to_double(item, &atom->val.f64)) {
-        atom->type = PLIPS_FLOAT;
-        return atom;
-    } else if (convert_to_string(item, &atom->val.str)) {
-        atom->type = PLIPS_STRING;
-        return atom;
+    if (convert_to_integer(item, &i64)) {
+        return plips_val_int_new(i64);
+    } else if (convert_to_double(item, &f64)) {
+        return plips_val_float_new(f64);
+    } else if (convert_to_string(item, &string)) {
+        return plips_val_string_new(string);
     }
 
     // doesnt match anything else,  make it an atom
-    atom->type = PLIPS_SYMBOL;
-    atom->val.str = strdup(item);
-    return atom;
+    return plips_val_symbol_new(strdup(item));
 }
 
 plips_val *plips_reader_form(plips_reader_t *r) {

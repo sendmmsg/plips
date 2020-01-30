@@ -10,10 +10,9 @@
 // TODO:
 // M-x c-guess-no-install
 // M-x c-guess-view
-
 plips_val *plips_error = NULL;
-// zhashx_t *repl_env;
 plips_env *repl_env;
+
 typedef struct _plips_fn_t
 {
     // function pointer
@@ -99,11 +98,11 @@ plips_val *APPLY(plips_val *ast) {
 plips_val *EVAL(plips_val *ast, plips_env *env);
 plips_val *eval_ast(plips_val *ast, plips_env *env) {
     plips_val *ret;
-
+    plips_val *item;
     switch (ast->type) {
         case PLIPS_ATOM:
             //    printf("looking up atom %s\n", ast->val.str);
-            ret = zhashx_lookup(env->table, ast->val.str);
+            ret = plips_env_get(env, ast->val.str);
             if (ret == NULL) {
                 plips_error = malloc(sizeof(plips_val));
                 plips_error->type = PLIPS_STRING;
@@ -114,7 +113,7 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
             break;
         case PLIPS_SYMBOL:
             //    printf("looking up symbol %s\n", ast->val.str);
-            ret = zhashx_lookup(env->table, ast->val.str);
+            ret = plips_env_get(env, ast->val.str);
             if (ret == NULL) {
                 plips_error = malloc(sizeof(plips_val));
                 plips_error->type = PLIPS_STRING;
@@ -122,8 +121,38 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
             }
             return ret;
         case PLIPS_LIST:
+            item = plips_val_list_first(ast);
+            if(item->type == PLIPS_SYMBOL){
+                if(streq(item->val.str, "def!") || streq(item->val.str, "define")){
+                    if(plips_val_list_len(ast) != 3){
+                        plips_error = plips_val_string_new("Error: def! requires 2 arguments");
+                        return NULL;
+                    }
+                    item = plips_val_list_next(ast);
+                    if(item->type != PLIPS_SYMBOL){
+                        plips_error = plips_val_string_new("Error: def! 1st argument must be a symbol!");
+                        return NULL;
+                    }
+                    ret = EVAL(plips_val_list_next(ast), env);
+                    plips_env_set(env, item->val.str, ret);
+                    return ret;
+                } else if(streq(item->val.str, "let*")){
+                    // (let* (c 2) c)
+                    // (let* ((c 2) (d 2)) d)
+                    item = plips_val_list_next(ast);
+                    if(item->type != PLIPS_LIST){
+                        plips_error = plips_val_string_new("Error: let* requires a list as first argument");
+                        return NULL;
+                    }
+                    // new_env = plips_env_new()
+                    // plips_env_set_outer(new_env, env);
+                    // if
+
+
+
+                }
+            }
             ret = plips_val_list_new();
-            plips_val *item = plips_val_list_first(ast);
             while (item != NULL) {
                 plips_val *new_item = EVAL(item, env);
                 if (new_item == NULL)
@@ -131,6 +160,7 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
                 plips_val_list_append(ret, new_item);
                 item = plips_val_list_next(ast);
             }
+
 
             item = plips_val_list_first(ret);
             if (item->type != PLIPS_FN_C) {
@@ -314,48 +344,48 @@ plips_val *_plips_div(plips_val *a, plips_val *b) {
 }
 
 void setup_repl_env() {
-    repl_env = malloc(sizeof(plips_env));
-    repl_env->outer = NULL;
-    repl_env->table = zhashx_new();
+    repl_env = plips_env_new();
+
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
     plips_val *f = plips_val_function_new((void *(*) (void *) ) _plips_add, 2);
-    zhashx_insert(repl_env->table, "+", f);
+    plips_env_set(repl_env, "+", f);
 
     f = plips_val_function_new((void *(*) (void *) ) _plips_sub, 2);
-    zhashx_insert(repl_env->table, "-", f);
+    plips_env_set(repl_env, "-", f);
 
     f = plips_val_function_new((void *(*) (void *) ) _plips_mul, 2);
-    zhashx_insert(repl_env->table, "*", f);
+    plips_env_set(repl_env, "*", f);
 
     f = plips_val_function_new((void *(*) (void *) ) _plips_div, 2);
-    zhashx_insert(repl_env->table, "/", f);
+    plips_env_set(repl_env, "/", f);
+
 #pragma GCC diagnostic pop
 }
 
-#define streq(s1,s2)    (!strcmp ((s1), (s2)))
+
 void completion(const char *buf, linenoiseCompletions *lc) {
     char *lparen = strrchr(buf, '(');
     printf("lparen = %s\n", lparen);
-    if (lparen == buf || lparen == NULL){
-        if (streq(buf, "(") ){
+    if (lparen == buf || lparen == NULL) {
+        if (streq(buf, "(")) {
             linenoiseAddCompletion(lc, "(+ a b)");
             linenoiseAddCompletion(lc, "(- a b)");
             linenoiseAddCompletion(lc, "(* a b)");
             linenoiseAddCompletion(lc, "(/ a b)");
         }
-    } else if(lparen) {
-        if(streq(buf, "(+")){
+    } else if (lparen) {
+        if (streq(buf, "(+")) {
             linenoiseAddCompletion(lc, "(+ a b)");
         }
-        if(streq(buf, "(-")){
+        if (streq(buf, "(-")) {
             linenoiseAddCompletion(lc, "(- a b)");
         }
-        if(streq(buf, "(*")){
+        if (streq(buf, "(*")) {
             linenoiseAddCompletion(lc, "(* a b)");
         }
-        if(streq(buf, "(/")){
+        if (streq(buf, "(/")) {
             linenoiseAddCompletion(lc, "(/ a b)");
         }
     }
@@ -381,13 +411,13 @@ int main(int argc, char **argv) {
     while (argc > 1) {
         argc--;
         argv++;
-        if (!strcmp(*argv, "--multiline")) {
+        if (streq(*argv, "--multiline")) {
             linenoiseSetMultiLine(1);
             printf("Multi-line mode enabled.\n");
-        } else if (!strcmp(*argv, "--keycodes")) {
+        } else if (streq(*argv, "--keycodes")) {
             linenoisePrintKeyCodes();
             exit(0);
-        } else if (!strcmp(*argv, "--verbose")) {
+        } else if (streq(*argv, "--verbose")) {
             verbose = 1;
         } else {
             fprintf(stderr, "Usage: %s [--multiline] [--keycodes]\n", prgname);

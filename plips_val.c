@@ -66,7 +66,10 @@ void *plips_val_list_next(plips_val *list) {
     assert(list->type == PLIPS_LIST);
     return zlistx_next(list->val.list);
 }
-
+ size_t plips_val_list_len(plips_val *list) {
+     assert(list->type == PLIPS_LIST);
+     return zlistx_size(list->val.list);
+ }
 plips_val *plips_val_keyword_new(char *val) {
     plips_val *mv = plips_val_new(PLIPS_STRING, NULL);
     asprintf(&mv->val.str, "\x7f%s", val);
