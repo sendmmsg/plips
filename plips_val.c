@@ -66,6 +66,7 @@ void *plips_val_list_next(plips_val *list) {
     assert(list->type == PLIPS_LIST);
     return zlistx_next(list->val.list);
 }
+
  size_t plips_val_list_len(plips_val *list) {
      assert(list->type == PLIPS_LIST);
      return zlistx_size(list->val.list);

@@ -95,10 +95,66 @@ plips_val *APPLY(plips_val *ast) {
 
     return ast;
 }
+
 plips_val *EVAL(plips_val *ast, plips_env *env);
+
+plips_env *parse_let_2(plips_env *env, plips_val *item){
+    if (plips_val_list_len(item) == 2){
+        plips_val *symb = plips_val_list_first(item);
+        plips_val *val = plips_val_list_next(item);
+        if(symb == NULL || val == NULL){
+            plips_error = plips_val_string_new("Error: let* syntax error in binding");
+            return NULL;
+        }
+        if(symb->type != PLIPS_SYMBOL){
+            plips_error = malloc(sizeof(plips_val));
+            plips_error->type = PLIPS_STRING;
+            asprintf(&plips_error->val.str, "Error: let*, %s is not a symbol", symb->val.str);
+            return NULL;
+        }
+        plips_val *ret = EVAL(val, env);
+        plips_env_set(env, symb->val.str, ret);
+        return env;
+    }
+    plips_error = plips_val_string_new("Error: let* syntax error");
+    return NULL;
+}
+
+// (a 1)
+// ((a 1) (b 2))
+// ((a 1) (b 2) (c 3))
+//
+plips_env* parse_let(plips_env *env, plips_val *item){
+    if(env == NULL){
+        env = plips_env_new();
+    }
+    plips_val *symb = plips_val_list_first(item);
+    if(symb->type == PLIPS_LIST){
+        while(symb){
+            if(symb->type == PLIPS_LIST){
+                env = parse_let_2(env, symb);
+                symb = plips_val_list_next(item);
+            } else {
+                plips_error = plips_val_string_new("Error: let* syntax error");
+                plips_env_destroy(&env);
+                return NULL;
+            }
+        }
+        return env;
+        // iterate and call parse_let_2 on all items
+    } else if(symb->type == PLIPS_SYMBOL){
+        env = parse_let_2(env, item);
+        return env;
+    }
+    plips_error = plips_val_string_new("Error: let* syntax error");
+    return NULL;
+}
+
+
 plips_val *eval_ast(plips_val *ast, plips_env *env) {
     plips_val *ret;
     plips_val *item;
+    plips_env *new_env;
     switch (ast->type) {
         case PLIPS_ATOM:
             //    printf("looking up atom %s\n", ast->val.str);
@@ -137,19 +193,27 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
                     plips_env_set(env, item->val.str, ret);
                     return ret;
                 } else if(streq(item->val.str, "let*")){
-                    // (let* (c 2) c)
-                    // (let* ((c 2) (d 2)) d)
+                    if(plips_val_list_len(ast) != 3){
+                        plips_error = plips_val_string_new("Error: let* requires an argument");
+                        return NULL;
+                    }
+                    item = plips_val_list_first(ast);
                     item = plips_val_list_next(ast);
+                    if(item == NULL){
+                        plips_error = plips_val_string_new("Error: let* requires an argument");
+                        return NULL;
+                    }
                     if(item->type != PLIPS_LIST){
+                        plips_val_print(item,1);
                         plips_error = plips_val_string_new("Error: let* requires a list as first argument");
                         return NULL;
                     }
-                    // new_env = plips_env_new()
-                    // plips_env_set_outer(new_env, env);
-                    // if
+                    new_env = parse_let(NULL, item);
 
-
-
+                    plips_env_set_outer(new_env, env);
+                    ret = EVAL(plips_val_list_next(ast), new_env);
+                    plips_env_set(new_env, item->val.str, ret);
+                    return ret;
                 }
             }
             ret = plips_val_list_new();
@@ -183,9 +247,9 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
 }
 
 plips_val *EVAL(plips_val *ast, plips_env *env) {
-    //    char *ast_str = plips_val_tostr(ast, 1);
-    //    printf("EVAL %s\n", ast_str);
-    //    free(ast_str);
+        /* char *ast_str = plips_val_tostr(ast, 1); */
+        /* printf("EVAL %s\n", ast_str); */
+        /* free(ast_str); */
     if (!ast || plips_error)
         return NULL;
     if (ast->type != PLIPS_LIST)
