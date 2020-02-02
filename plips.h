@@ -1,6 +1,7 @@
 #ifndef _PLISP_H
 #define _PLISP_H
 #include <czmq.h>
+
 typedef struct _plisp_env
 {
     struct _plips_env *outer;
@@ -193,7 +194,7 @@ typedef struct _plips_val
 } plips_val;
 
 typedef struct _plips_reader_t plips_reader_t;
-
+extern plips_val *plips_error;
 #include "plips_env.h"
 #include "plips_val.h"
 #include "plips_reader.h"
