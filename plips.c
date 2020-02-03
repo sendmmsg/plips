@@ -37,7 +37,7 @@ plips_val *APPLY(plips_val *ast) {
         return NULL;
     }
 
-    if(num_args == -1){
+    if (num_args == -1) {
         return fn->val.f1(ast);
     }
 
@@ -224,20 +224,29 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
                     printf("not implemented yet\n");
                     return ast;
                 } else if (streq(item->val.str, "if")) {
-                    if(plips_val_list_len(ast) != 4){
+                    if (plips_val_list_len(ast) != 4) {
                         plips_error = plips_val_string_new("Error: if requires three arguments");
                         return NULL;
                     }
-                    plips_val *cond = plips_val_list_nth(ast,1);
+                    plips_val *cond = plips_val_list_nth(ast, 1);
                     ret = EVAL(cond, env);
-                    if(ret == NULL){
+                    if (ret == NULL) {
                         plips_error = plips_val_string_new("Error: if conditional returned NULL");
                         return NULL;
                     }
-                    if(ret == &plips_false || ret == &plips_nil){
-                        return EVAL(plips_val_list_nth(ast,3), env);
+                    if (ret == &plips_false || ret == &plips_nil) {
+                        return EVAL(plips_val_list_nth(ast, 3), env);
                     }
-                    return EVAL(plips_val_list_nth(ast,2), env);
+                    return EVAL(plips_val_list_nth(ast, 2), env);
+                } else if (streq(item->val.str, "do")) {
+                    plips_val *i = plips_val_list_first(ast);
+                    i = plips_val_list_next(ast);
+                    ret = NULL;
+                    while (i) {
+                        ret = EVAL(i, env);
+                        i = plips_val_list_next(ast);
+                    }
+                    return ret;
                 }
             }
             ret = plips_val_list_new();
@@ -314,7 +323,6 @@ plips_val *RE(plips_env *env, char *command, int verbose) {
     }
     return exp;
 }
-
 
 
 void completion(const char *buf, linenoiseCompletions *lc) {

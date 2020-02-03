@@ -70,16 +70,15 @@ void *plips_val_list_next(plips_val *list) {
 plips_val *plips_val_list_nth(plips_val *list, int n) {
     assert(list->type == PLIPS_LIST);
     plips_val *item = plips_val_list_first(list);
-    if(item == NULL)
+    if (item == NULL)
         return &plips_nil;
-    while(n > 0){
+    while (n > 0) {
         item = plips_val_list_next(list);
         n--;
-        if(item == NULL)
+        if (item == NULL)
             return &plips_nil;
-
     }
-    if(item == NULL)
+    if (item == NULL)
         return &plips_nil;
     return item;
 }
