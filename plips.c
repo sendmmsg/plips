@@ -223,8 +223,10 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
                         plips_env_set(new_env, item->val.str, ret);
                     return ret;
                 } else if (streq(item->val.str, "fn*") || streq(item->val.str, "lambda")) {
-                    printf("not implemented yet\n");
-                    return ast;
+                    plips_val *args = plips_val_list_nth(ast, 1);
+                    plips_val *body = plips_val_list_nth(ast, 2);
+                    return plips_val_fun_plips_new(args, body, env, EVAL);
+
                 } else if (streq(item->val.str, "if")) {
                     if (plips_val_list_len(ast) != 4) {
                         plips_error = plips_val_string_new("Error: if requires three arguments");

@@ -296,50 +296,50 @@ plips_env *plips_setup_repl_env() {
     plips_env *repl_env = plips_env_new();
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
-    plips_val *f = plips_val_function_new((void *(*) (void *) ) _plips_add, 2);
+    plips_val *f = plips_val_fun_c_new((void *(*) (void *) ) _plips_add, 2);
     plips_env_set(repl_env, "+", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_sub, 2);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_sub, 2);
     plips_env_set(repl_env, "-", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_mul, 2);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_mul, 2);
     plips_env_set(repl_env, "*", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_div, 2);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_div, 2);
     plips_env_set(repl_env, "/", f);
 
-    f = plips_val_function_new((void *(*) (void *) ) _plips_eq, 2);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_eq, 2);
     plips_env_set(repl_env, "=", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_gt, 2);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_gt, 2);
     plips_env_set(repl_env, ">", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_gte, 2);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_gte, 2);
     plips_env_set(repl_env, ">=", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_lt, 2);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_lt, 2);
     plips_env_set(repl_env, "<", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_lte, 2);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_lte, 2);
     plips_env_set(repl_env, "<=", f);
 
 
-    f = plips_val_function_new((void *(*) (void *) ) _plips_is_list, 1);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_is_list, 1);
     plips_env_set(repl_env, "list?", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_is_symbol, 1);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_is_symbol, 1);
     plips_env_set(repl_env, "symb?", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_is_string, 1);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_is_string, 1);
     plips_env_set(repl_env, "string?", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_is_int, 1);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_is_int, 1);
     plips_env_set(repl_env, "int?", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_is_float, 1);
-    plips_env_set(repl_env, "int?", f);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_is_float, 1);
+    plips_env_set(repl_env, "float?", f);
 
-    f = plips_val_function_new((void *(*) (void *) ) _plips_list, -1);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_list, -1);
     plips_env_set(repl_env, "list", f);
-    f = plips_val_function_new((void *(*) (void *) ) _plips_list_nth, 2);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_list_nth, 2);
     plips_env_set(repl_env, "nth", f);
 
-    f = plips_val_function_new((void *(*) (void *) ) _plips_prn, 1);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_prn, 1);
     plips_env_set(repl_env, "prn", f);
 
-    f = plips_val_function_new((void *(*) (void *) ) _plips_count, 1);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_count, 1);
     plips_env_set(repl_env, "count", f);
 
-    f = plips_val_function_new((void *(*) (void *) ) _plips_is_empty, 1);
+    f = plips_val_fun_c_new((void *(*) (void *) ) _plips_is_empty, 1);
     plips_env_set(repl_env, "empty?", f);
 
     /*  f = plips_val_function_new((void *(*) (void *) ) _plips_gc_collect, 0);

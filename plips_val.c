@@ -246,8 +246,17 @@ char *plips_val_tostr(plips_val *pt, int verbose) {
     fclose(ss);
     return ptr;
 }
+plips_val *plips_val_fun_plips_new(plips_val *args, plips_val * body, plips_env *env,
+                                   plips_val *(*eval_fn)(plips_val*, plips_env*)) {
+    plips_val *f = plips_val_new(PLIPS_FN, NULL);
+    f->val.func.evaluator = eval_fn;
+    f->val.func.args = args;
+    f->val.func.body = body;
+    f->val.func.env = (struct _plips_env*) env;
+    return f;
+}
 
-plips_val *plips_val_function_new(void *(*func)(void *), int arg_cnt) {
+plips_val *plips_val_fun_c_new(void *(*func)(void *), int arg_cnt) {
     plips_val *mv = plips_val_new(PLIPS_FN_C, NULL);
     mv->func_args = arg_cnt;
     mv->ismacro = 0;

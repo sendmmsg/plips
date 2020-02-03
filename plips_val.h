@@ -19,7 +19,9 @@ plips_val *plips_val_keyword_new(char *val);
 plips_val *plips_val_list_new();
 plips_val *plips_val_hash_new(zhashx_t *val);
 plips_val *plips_val_atom_new(plips_val *val);
-plips_val *plips_val_function_new(void *(*func)(void *), int arg_cnt);
+plips_val *plips_val_fun_c_new(void *(*func)(void *), int arg_cnt);
+plips_val *plips_val_fun_plips_new(plips_val *args, plips_val * body, plips_env *env,
+                                   plips_val *(*eval_fn)(plips_val*, plips_env*));
 
 void *plips_val_list_append(plips_val *list, void *item);
 void *plips_val_list_first(plips_val *list);
