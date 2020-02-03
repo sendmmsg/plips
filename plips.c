@@ -190,7 +190,8 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
                         return NULL;
                     }
                     ret = EVAL(plips_val_list_next(ast), env);
-                    plips_env_set(env, item->val.str, ret);
+                    if(ret != NULL)
+                        plips_env_set(env, item->val.str, ret);
                     return ret;
                 } else if(streq(item->val.str, "let*")){
                     if(plips_val_list_len(ast) != 3){
@@ -212,7 +213,8 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
 
                     plips_env_set_outer(new_env, env);
                     ret = EVAL(plips_val_list_next(ast), new_env);
-                    plips_env_set(new_env, item->val.str, ret);
+                    if(ret != NULL)
+                        plips_env_set(new_env, item->val.str, ret);
                     return ret;
                 }
             }

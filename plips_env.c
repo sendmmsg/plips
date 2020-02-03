@@ -52,7 +52,17 @@ size_t plips_env_total_size(plips_env *self){
 }
 
 int plips_env_set(plips_env *self, char *key, plips_val *val){
+    assert(self != NULL);
+    if(key == NULL){
+        printf("Error: plips_env_set, attempt to insert with NULL key!\n");
+        return -1;
+    }
+    if(val == NULL){
+        printf("Error: plips_env_set, attempt to insert with NULL val!\n");
+        return -1;
+    }
     if(zhashx_insert(self->table, key, val) == -1){
+        printf("%s already in env, removing and adding again\n", key);
         // try to delete existing item and try again
         zhashx_delete(self->table,key);
     }
