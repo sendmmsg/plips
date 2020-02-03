@@ -3,6 +3,7 @@
 #include "encodings/utf8.h"
 #include "linenoise.h"
 #include "plips_reader.h"
+#include "plips_core.h"
 #include <czmq.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,17 +30,22 @@ plips_val *APPLY(plips_val *ast) {
     fn = plips_val_list_first(ast);
     int num_args = fn->func_args;
     int got_args = zlistx_size(ast->val.list) - 1;
-    if (num_args != got_args) {
+    if (num_args != got_args && num_args != -1) {
         plips_error = malloc(sizeof(plips_val));
         plips_error->type = PLIPS_STRING;
         asprintf(&plips_error->val.str, "Error: procedure expected %d arguments, got %d", num_args, got_args);
         return NULL;
     }
 
+    if (num_args == -1) {
+        return fn->val.f1(ast);
+    }
+
     for (int i = 0; i < num_args; i++) {
         a[i] = plips_val_list_next(ast);
         //        printf("APPLY: a[%d] = %s\n", i, plips_val_tostr(a[i], 1));
     }
+
     switch (num_args) {
         case 0:
             return fn->val.f0();
@@ -98,15 +104,15 @@ plips_val *APPLY(plips_val *ast) {
 
 plips_val *EVAL(plips_val *ast, plips_env *env);
 
-plips_env *parse_let_2(plips_env *env, plips_val *item){
-    if (plips_val_list_len(item) == 2){
+plips_env *parse_let_2(plips_env *env, plips_val *item) {
+    if (plips_val_list_len(item) == 2) {
         plips_val *symb = plips_val_list_first(item);
         plips_val *val = plips_val_list_next(item);
-        if(symb == NULL || val == NULL){
+        if (symb == NULL || val == NULL) {
             plips_error = plips_val_string_new("Error: let* syntax error in binding");
             return NULL;
         }
-        if(symb->type != PLIPS_SYMBOL){
+        if (symb->type != PLIPS_SYMBOL) {
             plips_error = malloc(sizeof(plips_val));
             plips_error->type = PLIPS_STRING;
             asprintf(&plips_error->val.str, "Error: let*, %s is not a symbol", symb->val.str);
@@ -124,14 +130,14 @@ plips_env *parse_let_2(plips_env *env, plips_val *item){
 // ((a 1) (b 2))
 // ((a 1) (b 2) (c 3))
 //
-plips_env* parse_let(plips_env *env, plips_val *item){
-    if(env == NULL){
+plips_env *parse_let(plips_env *env, plips_val *item) {
+    if (env == NULL) {
         env = plips_env_new();
     }
     plips_val *symb = plips_val_list_first(item);
-    if(symb->type == PLIPS_LIST){
-        while(symb){
-            if(symb->type == PLIPS_LIST){
+    if (symb->type == PLIPS_LIST) {
+        while (symb) {
+            if (symb->type == PLIPS_LIST) {
                 env = parse_let_2(env, symb);
                 symb = plips_val_list_next(item);
             } else {
@@ -142,7 +148,7 @@ plips_env* parse_let(plips_env *env, plips_val *item){
         }
         return env;
         // iterate and call parse_let_2 on all items
-    } else if(symb->type == PLIPS_SYMBOL){
+    } else if (symb->type == PLIPS_SYMBOL) {
         env = parse_let_2(env, item);
         return env;
     }
@@ -178,14 +184,14 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
             return ret;
         case PLIPS_LIST:
             item = plips_val_list_first(ast);
-            if(item->type == PLIPS_SYMBOL){
-                if(streq(item->val.str, "def!") || streq(item->val.str, "define")){
-                    if(plips_val_list_len(ast) != 3){
+            if (item->type == PLIPS_SYMBOL) {
+                if (streq(item->val.str, "def!") || streq(item->val.str, "define")) {
+                    if (plips_val_list_len(ast) != 3) {
                         plips_error = plips_val_string_new("Error: def! requires 2 arguments");
                         return NULL;
                     }
                     item = plips_val_list_next(ast);
-                    if(item->type != PLIPS_SYMBOL){
+                    if (item->type != PLIPS_SYMBOL) {
                         plips_error = plips_val_string_new("Error: def! 1st argument must be a symbol!");
                         return NULL;
                     }
@@ -193,19 +199,19 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
                     if(ret != NULL)
                         plips_env_set(env, item->val.str, ret);
                     return ret;
-                } else if(streq(item->val.str, "let*")){
-                    if(plips_val_list_len(ast) != 3){
+                } else if (streq(item->val.str, "let*")) {
+                    if (plips_val_list_len(ast) != 3) {
                         plips_error = plips_val_string_new("Error: let* requires an argument");
                         return NULL;
                     }
                     item = plips_val_list_first(ast);
                     item = plips_val_list_next(ast);
-                    if(item == NULL){
+                    if (item == NULL) {
                         plips_error = plips_val_string_new("Error: let* requires an argument");
                         return NULL;
                     }
-                    if(item->type != PLIPS_LIST){
-                        plips_val_print(item,1);
+                    if (item->type != PLIPS_LIST) {
+                        plips_val_print(item, 1);
                         plips_error = plips_val_string_new("Error: let* requires a list as first argument");
                         return NULL;
                     }
@@ -215,6 +221,33 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
                     ret = EVAL(plips_val_list_next(ast), new_env);
                     if(ret != NULL)
                         plips_env_set(new_env, item->val.str, ret);
+                    return ret;
+                } else if (streq(item->val.str, "fn*") || streq(item->val.str, "lambda")) {
+                    printf("not implemented yet\n");
+                    return ast;
+                } else if (streq(item->val.str, "if")) {
+                    if (plips_val_list_len(ast) != 4) {
+                        plips_error = plips_val_string_new("Error: if requires three arguments");
+                        return NULL;
+                    }
+                    plips_val *cond = plips_val_list_nth(ast, 1);
+                    ret = EVAL(cond, env);
+                    if (ret == NULL) {
+                        plips_error = plips_val_string_new("Error: if conditional returned NULL");
+                        return NULL;
+                    }
+                    if (ret == &plips_false || ret == &plips_nil) {
+                        return EVAL(plips_val_list_nth(ast, 3), env);
+                    }
+                    return EVAL(plips_val_list_nth(ast, 2), env);
+                } else if (streq(item->val.str, "do")) {
+                    plips_val *i = plips_val_list_first(ast);
+                    i = plips_val_list_next(ast);
+                    ret = NULL;
+                    while (i) {
+                        ret = EVAL(i, env);
+                        i = plips_val_list_next(ast);
+                    }
                     return ret;
                 }
             }
@@ -249,9 +282,9 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
 }
 
 plips_val *EVAL(plips_val *ast, plips_env *env) {
-        /* char *ast_str = plips_val_tostr(ast, 1); */
-        /* printf("EVAL %s\n", ast_str); */
-        /* free(ast_str); */
+    /* char *ast_str = plips_val_tostr(ast, 1); */
+    /* printf("EVAL %s\n", ast_str); */
+    /* free(ast_str); */
     if (!ast || plips_error)
         return NULL;
     if (ast->type != PLIPS_LIST)
@@ -291,143 +324,6 @@ plips_val *RE(plips_env *env, char *command, int verbose) {
         // TODO: free *ast here
     }
     return exp;
-}
-
-/* TODO: make a generic function here, getting rid of all the duplication */
-
-plips_val *_plips_add(plips_val *a, plips_val *b) {
-    if (a == NULL || b == NULL) {
-        plips_error = plips_val_string_new("Error: in procedure +, one of the arguments is nil");
-        return NULL;
-    }
-    if (a->type != PLIPS_INT && a->type != PLIPS_FLOAT) {
-        printf("type %d\n", a->type);
-        plips_error = plips_val_string_new("Error: in procedure +, first parameter is of wrong type");
-        return NULL;
-    }
-    if (b->type != PLIPS_INT && b->type != PLIPS_FLOAT) {
-        plips_error = plips_val_string_new("Error: in procedure +, second parameter is of wrong type");
-        return NULL;
-    }
-    if (a->type == PLIPS_INT && b->type == PLIPS_INT) {
-        return plips_val_int_new(a->val.i64 + b->val.i64);
-    }
-    if (a->type == PLIPS_FLOAT && b->type == PLIPS_INT) {
-        return plips_val_float_new(a->val.f64 + b->val.i64);
-    }
-    if (b->type == PLIPS_FLOAT && a->type == PLIPS_INT) {
-        return plips_val_float_new(b->val.f64 + a->val.i64);
-    }
-    if (b->type == PLIPS_FLOAT && a->type == PLIPS_FLOAT) {
-        return plips_val_float_new(b->val.f64 + a->val.f64);
-    }
-    plips_error = plips_val_string_new("Error: in procedure +, some impossible error");
-    return NULL;
-}
-plips_val *_plips_sub(plips_val *a, plips_val *b) {
-    if (a == NULL || b == NULL) {
-        plips_error = plips_val_string_new("Error: in procedure -, one of the arguments is nil");
-        return NULL;
-    }
-    if (a->type != PLIPS_INT && a->type != PLIPS_FLOAT) {
-        plips_error = plips_val_string_new("Error: in procedure -, first parameter is of wrong type");
-        return NULL;
-    }
-    if (b->type != PLIPS_INT && b->type != PLIPS_FLOAT) {
-        plips_error = plips_val_string_new("Error: in procedure -, second parameter is of wrong type");
-        return NULL;
-    }
-    if (a->type == PLIPS_INT && b->type == PLIPS_INT) {
-        return plips_val_int_new(a->val.i64 - b->val.i64);
-    }
-    if (a->type == PLIPS_FLOAT && b->type == PLIPS_INT) {
-        return plips_val_float_new(a->val.f64 - b->val.i64);
-    }
-    if (b->type == PLIPS_FLOAT && a->type == PLIPS_INT) {
-        return plips_val_float_new(a->val.i64 - b->val.f64);
-    }
-    if (b->type == PLIPS_FLOAT && a->type == PLIPS_FLOAT) {
-        return plips_val_float_new(a->val.f64 - b->val.f64);
-    }
-    plips_error = plips_val_string_new("Error: in procedure -, some impossible error");
-    return NULL;
-}
-plips_val *_plips_mul(plips_val *a, plips_val *b) {
-    if (a == NULL || b == NULL) {
-        plips_error = plips_val_string_new("Error: in procedure *, one of the arguments is nil");
-        return NULL;
-    }
-    if (a->type != PLIPS_INT && a->type != PLIPS_FLOAT) {
-        plips_error = plips_val_string_new("Error: in procedure *, first parameter is of wrong type");
-        return NULL;
-    }
-    if (b->type != PLIPS_INT && b->type != PLIPS_FLOAT) {
-        plips_error = plips_val_string_new("Error: in procedure *, second parameter is of wrong type");
-        return NULL;
-    }
-    if (a->type == PLIPS_INT && b->type == PLIPS_INT) {
-        return plips_val_int_new(a->val.i64 * b->val.i64);
-    }
-    if (a->type == PLIPS_FLOAT && b->type == PLIPS_INT) {
-        return plips_val_float_new(a->val.f64 * b->val.i64);
-    }
-    if (b->type == PLIPS_FLOAT && a->type == PLIPS_INT) {
-        return plips_val_float_new(b->val.f64 * a->val.i64);
-    }
-    if (b->type == PLIPS_FLOAT && a->type == PLIPS_FLOAT) {
-        return plips_val_float_new(b->val.f64 * a->val.f64);
-    }
-    plips_error = plips_val_string_new("Error: in procedure *, some impossible error");
-    return NULL;
-}
-plips_val *_plips_div(plips_val *a, plips_val *b) {
-    if (a == NULL || b == NULL) {
-        plips_error = plips_val_string_new("Error: in procedure /, one of the arguments is nil");
-        return NULL;
-    }
-    if (a->type != PLIPS_INT && a->type != PLIPS_FLOAT) {
-        plips_error = plips_val_string_new("Error: in procedure /, first parameter is of wrong type");
-        return NULL;
-    }
-    if (b->type != PLIPS_INT && b->type != PLIPS_FLOAT) {
-        plips_error = plips_val_string_new("Error: in procedure /, second parameter is of wrong type");
-        return NULL;
-    }
-    if (a->type == PLIPS_INT && b->type == PLIPS_INT) {
-        return plips_val_int_new(a->val.i64 / b->val.i64);
-    }
-    if (a->type == PLIPS_FLOAT && b->type == PLIPS_INT) {
-        return plips_val_float_new(a->val.f64 / b->val.i64);
-    }
-    if (a->type == PLIPS_INT && b->type == PLIPS_FLOAT) {
-        return plips_val_float_new(a->val.i64 / b->val.f64);
-    }
-    if (b->type == PLIPS_FLOAT && a->type == PLIPS_FLOAT) {
-        return plips_val_float_new(a->val.f64 / b->val.f64);
-    }
-    plips_error = plips_val_string_new("Error: in procedure /, some impossible error");
-    return NULL;
-}
-
-void setup_repl_env() {
-    repl_env = plips_env_new();
-
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-function-type"
-    plips_val *f = plips_val_function_new((void *(*) (void *) ) _plips_add, 2);
-    plips_env_set(repl_env, "+", f);
-
-    f = plips_val_function_new((void *(*) (void *) ) _plips_sub, 2);
-    plips_env_set(repl_env, "-", f);
-
-    f = plips_val_function_new((void *(*) (void *) ) _plips_mul, 2);
-    plips_env_set(repl_env, "*", f);
-
-    f = plips_val_function_new((void *(*) (void *) ) _plips_div, 2);
-    plips_env_set(repl_env, "/", f);
-
-#pragma GCC diagnostic pop
 }
 
 
@@ -498,7 +394,7 @@ int main(int argc, char **argv) {
 
     linenoiseHistoryLoad("history.txt");
     char *output;
-    setup_repl_env();
+    repl_env = plips_setup_repl_env();
 
     while ((line = linenoise("😡\033[32mPLIPS\x1b[0m> ")) != NULL) {
         if (line[0] != '\0' && line[0] != '/') {
@@ -512,7 +408,7 @@ int main(int argc, char **argv) {
                 continue;
             }
 
-            plips_val_tostr(exp, 1);
+            // plips_val_tostr(exp, 1);
             if (plips_error && strcmp("EOF", plips_error->val.str) == 0) {
                 plips_val_print(plips_error, 0);
                 return 0;

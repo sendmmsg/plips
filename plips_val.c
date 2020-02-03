@@ -67,10 +67,26 @@ void *plips_val_list_next(plips_val *list) {
     return zlistx_next(list->val.list);
 }
 
- size_t plips_val_list_len(plips_val *list) {
-     assert(list->type == PLIPS_LIST);
-     return zlistx_size(list->val.list);
- }
+plips_val *plips_val_list_nth(plips_val *list, int n) {
+    assert(list->type == PLIPS_LIST);
+    plips_val *item = plips_val_list_first(list);
+    if (item == NULL)
+        return &plips_nil;
+    while (n > 0) {
+        item = plips_val_list_next(list);
+        n--;
+        if (item == NULL)
+            return &plips_nil;
+    }
+    if (item == NULL)
+        return &plips_nil;
+    return item;
+}
+
+size_t plips_val_list_len(plips_val *list) {
+    assert(list->type == PLIPS_LIST);
+    return zlistx_size(list->val.list);
+}
 plips_val *plips_val_keyword_new(char *val) {
     plips_val *mv = plips_val_new(PLIPS_STRING, NULL);
     asprintf(&mv->val.str, "\x7f%s", val);
