@@ -121,6 +121,7 @@ char *plips_val_tostr(plips_val *pt, int verbose) {
         exit(EXIT_FAILURE);
     }
 
+    // replace with switch statement
     if (pt->type == PLIPS_LIST) {
         if (verbose)
             fprintf(ss, "L-%ld: (", zlistx_size(pt->val.list));
@@ -167,6 +168,10 @@ char *plips_val_tostr(plips_val *pt, int verbose) {
         if (verbose)
             fprintf(ss, "S:");
         fprintf(ss, "%s ", pt->val.str);
+    } else if (pt->type == PLIPS_FN) {
+        if (verbose)
+            fprintf(ss, "FN/:");
+        fprintf(ss, "λ: %s", plips_val_tostr(pt->val.func.args,verbose));
     } else if (pt->type == PLIPS_FN_C) {
         if (verbose)
             fprintf(ss, "FN_C(%d):", pt->func_args);

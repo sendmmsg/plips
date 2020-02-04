@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <pcre.h>
 #include "plips.h"
-
+extern int verbose;
 pcre *reCompiled;
 pcre_extra *pcreExtra;
 int pcreExecRet;
@@ -161,16 +161,25 @@ plips_val *plips_reader_list(plips_reader_t *r) {
     //    printf("read_list called\n");
     plips_val *newlist = plips_val_list_new();
     char *tok = plips_reader_next(r);
-    //    printf("Eating left par %s\n",tok);
+    if(verbose)
+        printf("Eating left par %s\n",tok);
+    tok = plips_reader_peek(r);
+    if(tok[0] == ')'){
+        if(verbose)
+            printf("peeked \"%s\" and it is an empty list, eat and return?\n",tok);
+        tok = plips_reader_next(r);
+        return newlist;
+    }
     do {
-        //        printf("read_list-%d\n", j++);
         plips_val_list_append(newlist, plips_reader_form(r));
         tok = plips_reader_peek(r);
-        //        printf("read_list next \"%s\"", tok);
+        if(verbose)
+            printf("read_list peek \"%s\"", tok);
     } while (tok != NULL && tok[0] != ')');
 
     if (tok == NULL) {
-        printf("SYNTAX ERROR: unbalanced parathesis\n");
+        printf("SYNTAX ERROR: unbalanced parenthesis\n");
+        return NULL;
     } else if (tok[0] == ')') {
         plips_reader_next(r);
     }
@@ -304,8 +313,12 @@ plips_val *plips_read_atom(plips_reader_t *r) {
 
 plips_val *plips_reader_form(plips_reader_t *r) {
     char *tok;
+    if(verbose)
+        printf("plips_reader_form\n");
     do {
         tok = plips_reader_peek(r);
+        if(verbose)
+            printf("  form token %s\n", tok);
     } while (tok != NULL && tok[0] == ';');
 
     if (tok == NULL) {
@@ -319,10 +332,13 @@ plips_val *plips_reader_form(plips_reader_t *r) {
 }
 plips_val *reader_str(char *command, int verbose) {
     plips_reader_t *r = plips_reader_new(command);
-    //    plips_reader_print(r);
+    if(verbose)
+        plips_reader_print(r);
     plips_val *t = plips_reader_form(r);
-    // type_print(t, verbose);
-    //    printf("\n");
+    if(verbose){
+        plips_val_print(t, verbose);
+        printf("\n");
+    }
     plips_reader_destroy(r);
     return t;
 }

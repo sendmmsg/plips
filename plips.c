@@ -8,11 +8,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 // TODO:
 // M-x c-guess-no-install
 // M-x c-guess-view
 plips_val *plips_error = NULL;
 plips_env *repl_env;
+int verbose = 0;
+
+
+/* screws up with basic libc init
+void *realloc(void *__ptr, size_t __size)  {
+    return GC_REALLOC(__ptr, __size);
+}
+
+void *malloc(size_t __size){
+    return GC_MALLOC(__size);
+}
+
+void free(void *ptr){
+
+}
+void *calloc(size_t nmemb, size_t size){
+    return GC_MALLOC(nmemb*size);
+}
+*/
 
 typedef struct _plips_fn_t
 {
@@ -28,7 +48,43 @@ plips_val *APPLY(plips_val *ast) {
     plips_val *a[20];
     memset(a, 0, 20 * sizeof(plips_val *));
     fn = plips_val_list_first(ast);
-    int num_args = fn->func_args;
+
+    if(fn->type == PLIPS_FN){
+        plips_val *args = fn->val.func.args;
+        int num_args = plips_val_list_len(args);
+        int got_args = plips_val_list_len(ast) - 1;
+        plips_val *body = fn->val.func.body;
+        plips_env *env = (plips_env*) fn->val.func.env;
+        plips_env *new_env;
+        if (num_args != got_args){
+            plips_error = malloc(sizeof(plips_val));
+            plips_error->type = PLIPS_STRING;
+            asprintf(&plips_error->val.str, "Error: procedure expected %d arguments, got %d", num_args, got_args);
+            return NULL;
+        }
+
+        if(verbose){
+            printf("PLIPS_FN args:\n");
+            plips_val_print(args,1);
+            printf("PLIPS_FN body:\n");
+            plips_val_print(body,1);
+        }
+
+        if(num_args > 0){
+            new_env = plips_env_new();
+            for(int i=0; i < num_args; i++){
+                plips_val* sym = plips_val_list_nth(args,i);
+                plips_val* val = plips_val_list_nth(ast,i+1);
+                plips_env_set(new_env, sym->val.str,val);
+            }
+            plips_env_set_outer(new_env, env);
+        } else {
+            new_env = env;
+        }
+
+        return fn->val.func.evaluator(body, new_env);
+    } else { // PLIPS_FN_C
+        int num_args = fn->func_args;
     int got_args = zlistx_size(ast->val.list) - 1;
     if (num_args != got_args && num_args != -1) {
         plips_error = malloc(sizeof(plips_val));
@@ -98,8 +154,8 @@ plips_val *APPLY(plips_val *ast) {
             return fn->val.f20(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11],
                                a[12], a[13], a[14], a[15], a[16], a[17], a[18], a[19]);
     }
-
     return ast;
+    }
 }
 
 plips_val *EVAL(plips_val *ast, plips_env *env);
@@ -223,8 +279,30 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
                         plips_env_set(new_env, item->val.str, ret);
                     return ret;
                 } else if (streq(item->val.str, "fn*") || streq(item->val.str, "lambda")) {
+                    if(verbose){
+                        printf("special form fn*\n ast: ");
+                        plips_val_print(ast,1);
+                    }
                     plips_val *args = plips_val_list_nth(ast, 1);
                     plips_val *body = plips_val_list_nth(ast, 2);
+                    if(verbose){
+                        printf("special form fn*\n args: ");
+                        plips_val_print(args,1);
+                        printf("special form fn*\n body: ");
+                        plips_val_print(body,1);
+                    }
+                    plips_val *sym = plips_val_list_first(args);
+                    while(sym != NULL){
+                        if(sym->type != PLIPS_SYMBOL){
+                            plips_error = malloc(sizeof(plips_val));
+                            plips_error->type = PLIPS_STRING;
+                            asprintf(&plips_error->val.str, "Error: lambda, exptected symbol, found",
+                                     plips_val_tostr(sym,1));
+                            return NULL;
+                        }
+                        sym = plips_val_list_next(args);
+                    }
+
                     return plips_val_fun_plips_new(args, body, env, EVAL);
 
                 } else if (streq(item->val.str, "if")) {
@@ -264,7 +342,7 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
 
 
             item = plips_val_list_first(ret);
-            if (item->type != PLIPS_FN_C) {
+            if (item->type != PLIPS_FN_C && item->type != PLIPS_FN) {
                 plips_error = malloc(sizeof(plips_val));
                 plips_error->type = PLIPS_STRING;
                 char *type = plips_val_tostr(item, 1);
@@ -273,8 +351,6 @@ plips_val *eval_ast(plips_val *ast, plips_env *env) {
                 return NULL;
             }
             return APPLY(ret);
-
-            return ret;
             break;
         default:
             //    printf("eval_ast: type %d not handled, return ast\n", ast->type);
@@ -303,6 +379,8 @@ plips_val *EVAL(plips_val *ast, plips_env *env) {
 }
 
 char *PRINT(plips_val *ast) {
+    if(ast == NULL)
+        plips_error = plips_val_string_new("Parse error!");
     if (plips_error)
         return NULL;
     return plips_val_tostr(ast, 0);
@@ -371,7 +449,7 @@ char *hints(const char *buf, int *color, int *bold) {
 int main(int argc, char **argv) {
     char *line;
     char *prgname = argv[0];
-    int verbose = 0;
+    //    GC_INIT();
     while (argc > 1) {
         argc--;
         argv++;
